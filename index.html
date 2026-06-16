@@ -256,6 +256,7 @@ canvas{display:none;}
           <div class="teams-grid" id="teams-disp"></div>
           <div class="row2" style="margin-top:12px">
             <button class="btn b-dark" onclick="sortear()">&#x1F500; Re-sortear</button>
+            <button class="btn b-sm" onclick="openSwap()" style="background:#1a1a0a;border:1px solid #f0b429;color:#f0b429;border-radius:9px;font-weight:700;padding:12px">&#x21C6; Editar</button>
             <button class="btn b-green" onclick="genImg()">&#x1F4F8; WhatsApp</button>
           </div>
         </div>
@@ -562,61 +563,35 @@ function genImg(){
   var W=700,H=1200;
   var cvs=document.getElementById('cvs'),ctx=cvs.getContext('2d');
   cvs.width=W;cvs.height=H;
-
-  function doRender(bgImg){
-    // Background
-    if(bgImg){
-      ctx.drawImage(bgImg,0,0,W,H);
-      ctx.fillStyle='rgba(0,0,0,0.80)';
-      ctx.fillRect(0,0,W,H);
-    } else {
-      ctx.fillStyle='#0d1117';
-      ctx.fillRect(0,0,W,H);
-    }
-    // Header
+  function doRender(bg){
+    if(bg){ctx.drawImage(bg,0,0,W,H);ctx.fillStyle='rgba(0,0,0,0.80)';ctx.fillRect(0,0,W,H);}
+    else{ctx.fillStyle='#0d1117';ctx.fillRect(0,0,W,H);}
     ctx.textAlign='center';
     ctx.shadowColor='rgba(0,0,0,0.9)';ctx.shadowBlur=10;
-    ctx.fillStyle='#f0b429';
-    ctx.font='bold 58px Arial';
-    ctx.fillText('LOS CRUDOS FC',W/2,64);
-    ctx.fillStyle='rgba(255,255,255,0.75)';
-    ctx.font='16px Arial';
+    ctx.fillStyle='#f0b429';ctx.font='bold 58px Arial';ctx.fillText('LOS CRUDOS FC',W/2,64);
+    ctx.fillStyle='rgba(255,255,255,0.8)';ctx.font='15px Arial';
     ctx.fillText(new Date().toLocaleDateString('es-AR',{weekday:'long',day:'numeric',month:'long'}).toUpperCase(),W/2,88);
-    ctx.fillStyle='rgba(240,180,41,0.85)';
-    ctx.font='bold italic 16px Arial';
+    ctx.fillStyle='rgba(240,180,41,0.85)';ctx.font='bold italic 16px Arial';
     ctx.fillText('Director Tecnico del Partido',W/2,112);
     ctx.shadowBlur=0;
-    // Field
     var FX=20,FY=124,FW=W-40,FH=H-160;
-    drawCanvasField(ctx,FX,FY,FW,FH);
-    // Each team strictly in its half
-    // TOP half: FY to FY+FH/2
-    // BOT half: FY+FH/2 to FY+FH
-    drawTeamHalf(ctx,currentTeams.a,FX,FY,FW,FH/2,'TOP','#cc5500');
-    drawTeamHalf(ctx,currentTeams.b,FX,FY+FH/2,FW,FH/2,'BOT','#a07800');
-    // Team labels
-    ctx.shadowColor='rgba(0,0,0,0.9)';ctx.shadowBlur=6;
+    canvasField(ctx,FX,FY,FW,FH);
+    canvasTeam(ctx,currentTeams.a,FX,FY,        FW,FH/2,'TOP','#c85000');
+    canvasTeam(ctx,currentTeams.b,FX,FY+FH/2,   FW,FH/2,'BOT','#a07800');
+    ctx.shadowColor='rgba(0,0,0,0.9)';ctx.shadowBlur=8;
     ctx.font='bold 26px Arial';
-    ctx.textAlign='left'; ctx.fillStyle='#ff8c00';
-    ctx.fillText('NARANJA',24,H-18);
-    ctx.textAlign='right'; ctx.fillStyle='#ffd700';
-    ctx.fillText('AMARILLO',W-24,H-18);
+    ctx.textAlign='left';ctx.fillStyle='#ff8c00';ctx.fillText('NARANJA',24,H-18);
+    ctx.textAlign='right';ctx.fillStyle='#ffd700';ctx.fillText('AMARILLO',W-24,H-18);
     ctx.shadowBlur=0;
-    // Save
     var url=cvs.toDataURL('image/png');
-    var a=document.createElement('a');
-    a.href=url;
+    var a=document.createElement('a');a.href=url;
     a.download='crudos_'+new Date().toLocaleDateString('es-AR').replace(/[/]/g,'-')+'.png';
-    a.click();
-    toast('Imagen descargada!');
+    a.click();toast('Imagen descargada!');
   }
-
-  // Load padrino via blob to bypass canvas taint
   try{
     var b64=IMG_PADRINO.replace(/^data:image\/[a-z]+;base64,/,'');
-    var bin=atob(b64);
-    var arr=new Uint8Array(bin.length);
-    for(var i=0;i<bin.length;i++) arr[i]=bin.charCodeAt(i);
+    var bin=atob(b64);var arr=new Uint8Array(bin.length);
+    for(var i=0;i<bin.length;i++)arr[i]=bin.charCodeAt(i);
     var blob=new Blob([arr],{type:'image/jpeg'});
     var burl=URL.createObjectURL(blob);
     var img=new Image();
@@ -625,109 +600,220 @@ function genImg(){
     img.src=burl;
   }catch(e){doRender(null);}
 }
-
-function drawCanvasField(ctx,FX,FY,FW,FH){
-  // Full field background
-  ctx.fillStyle='#1e7d3a';
-  ctx.beginPath();ctx.roundRect(FX,FY,FW,FH,8);ctx.fill();
-  // Stripes
+function canvasField(ctx,FX,FY,FW,FH){
+  ctx.fillStyle='#1e7d3a';ctx.beginPath();ctx.roundRect(FX,FY,FW,FH,8);ctx.fill();
   var sH=FH/10;
-  for(var i=0;i<10;i++){
-    if(i%2===0){ctx.fillStyle='rgba(0,0,0,0.05)';ctx.fillRect(FX,FY+i*sH,FW,sH);}
-  }
+  for(var i=0;i<10;i++){if(i%2===0){ctx.fillStyle='rgba(0,0,0,0.05)';ctx.fillRect(FX,FY+i*sH,FW,sH);}}
   ctx.strokeStyle='rgba(255,255,255,0.8)';ctx.lineWidth=2.5;
-  // Border
   ctx.strokeRect(FX,FY,FW,FH);
-  // Centre line
   var midY=FY+FH/2;
   ctx.beginPath();ctx.moveTo(FX,midY);ctx.lineTo(FX+FW,midY);ctx.stroke();
-  // Centre circle
   ctx.beginPath();ctx.arc(FX+FW/2,midY,55,0,Math.PI*2);ctx.stroke();
   ctx.fillStyle='white';ctx.beginPath();ctx.arc(FX+FW/2,midY,5,0,Math.PI*2);ctx.fill();
-  // TOP penalty area
   var pbW=FW*0.50,pbH=FH*0.09,gbW=FW*0.26,gbH=FH*0.035;
-  ctx.strokeRect(FX+(FW-pbW)/2,FY,pbW,pbH);
-  ctx.strokeRect(FX+(FW-gbW)/2,FY,gbW,gbH);
-  // BOT penalty area
-  ctx.strokeRect(FX+(FW-pbW)/2,FY+FH-pbH,pbW,pbH);
-  ctx.strokeRect(FX+(FW-gbW)/2,FY+FH-gbH,gbW,gbH);
+  ctx.strokeRect(FX+(FW-pbW)/2,FY,pbW,pbH);ctx.strokeRect(FX+(FW-gbW)/2,FY,gbW,gbH);
+  ctx.strokeRect(FX+(FW-pbW)/2,FY+FH-pbH,pbW,pbH);ctx.strokeRect(FX+(FW-gbW)/2,FY+FH-gbH,gbW,gbH);
 }
-
-// Draw one team strictly within its half
-// halfX,halfY = top-left of this team's half
-// halfH = height of this half
-// side: 'TOP' means ARQ at top edge, DEL near centre line
-//       'BOT' means ARQ at bottom edge, DEL near centre line
-function drawTeamHalf(ctx,team,halfX,halfY,halfW,halfH,side,col){
-  // Fraction of halfH from the FAR edge (goal) toward centre line
-  // Formation: ARQ=0.08, DEF=0.30, MED=0.55, DEL=0.82
-  // For TOP: y = halfY + fraction*halfH  (0=top goal, 1=centre)
-  // For BOT: y = halfY + (1-fraction)*halfH  (0=bottom goal, 1=centre)
-  var fracs={ARQ:0.08, DEF:0.30, MED:0.57, DEL:0.82};
+function canvasTeam(ctx,team,FX,halfY,FW,halfH,side,col){
+  var isTop=side==='TOP';
+  var fr={ARQ:0.07,DEF:0.28,MED:0.55,DEL:0.82};
   var posColor={ARQ:'#f0b429',DEF:'#56b4e9',MED:'#76c442',DEL:'#e05252'};
   var R=28;
-
   var byPos={};
   team.forEach(function(p){if(!byPos[p.pa])byPos[p.pa]=[];byPos[p.pa].push(p);});
-
   ['ARQ','DEF','MED','DEL'].forEach(function(pos){
     var ps=byPos[pos];if(!ps||!ps.length)return;
-    var f=fracs[pos];
-    var y=side==='TOP' ? halfY+f*halfH : halfY+(1-f)*halfH;
+    var f=fr[pos];
+    var y=isTop?halfY+f*halfH:halfY+(1-f)*halfH;
     var n=ps.length;
-
     ps.forEach(function(p,i){
-      // Spread horizontally, keep good margins
-      var margin=0.10;
-      var usable=halfW*(1-2*margin);
-      var x;
-      if(n===1)      x=halfX+halfW/2;
-      else if(n===2) x=halfX+halfW*margin+usable*(i/(n-1));
-      else if(n===3) x=halfX+halfW*margin+usable*(i/(n-1));
-      else           x=halfX+halfW*margin+usable*(i/(n-1));
-
-      // Shadow
-      ctx.fillStyle='rgba(0,0,0,0.5)';
-      ctx.beginPath();ctx.arc(x+3,y+3,R,0,Math.PI*2);ctx.fill();
-      // Circle
-      ctx.fillStyle=col;
-      ctx.beginPath();ctx.arc(x,y,R,0,Math.PI*2);ctx.fill();
+      var mg=0.12,usable=FW*(1-2*mg);
+      var x=n===1?FX+FW/2:FX+FW*mg+usable*(i/(n-1));
+      ctx.fillStyle='rgba(0,0,0,0.5)';ctx.beginPath();ctx.arc(x+3,y+3,R,0,Math.PI*2);ctx.fill();
+      ctx.fillStyle=col;ctx.beginPath();ctx.arc(x,y,R,0,Math.PI*2);ctx.fill();
       ctx.strokeStyle='rgba(255,255,255,0.95)';ctx.lineWidth=3;ctx.stroke();
-
-      // Initials
       var ini=p.name.split(' ').map(function(w){return w[0];}).join('').toUpperCase().slice(0,2);
-      ctx.fillStyle='white';
-      ctx.font='bold 20px Arial';
+      ctx.fillStyle='white';ctx.font='bold 20px Arial';
       ctx.textAlign='center';ctx.textBaseline='middle';
-      ctx.shadowColor='rgba(0,0,0,0.7)';ctx.shadowBlur=3;
-      ctx.fillText(ini,x,y);
-      ctx.shadowBlur=0;
-
-      // Position badge above circle
-      ctx.font='bold 13px Arial';
-      ctx.textBaseline='bottom';
-      var pcol=posColor[pos];
+      ctx.shadowColor='rgba(0,0,0,0.6)';ctx.shadowBlur=3;
+      ctx.fillText(ini,x,y);ctx.shadowBlur=0;
+      ctx.font='bold 13px Arial';ctx.textBaseline='bottom';
       var bw=ctx.measureText(pos).width+14;
-      ctx.fillStyle='rgba(0,0,0,0.85)';
-      ctx.beginPath();ctx.roundRect(x-bw/2,y-R-22,bw,18,4);ctx.fill();
-      ctx.fillStyle=pcol;
-      ctx.fillText(pos,x,y-R-6);
-
-      // Name below — BIG and readable
-      var fn=p.name.split(' ')[0];
-      var dn=fn.length>11?fn.slice(0,10)+'.':fn;
-      ctx.font='bold 19px Arial';
-      ctx.textBaseline='top';
+      ctx.fillStyle='rgba(0,0,0,0.85)';ctx.beginPath();ctx.roundRect(x-bw/2,y-R-22,bw,18,4);ctx.fill();
+      ctx.fillStyle=posColor[pos]||'white';ctx.fillText(pos,x,y-R-6);
+      var fn=p.name.split(' ')[0];var dn=fn.length>11?fn.slice(0,10)+'.':fn;
+      ctx.font='bold 19px Arial';ctx.textBaseline='top';
       var nw=ctx.measureText(dn).width+16;
-      ctx.fillStyle='rgba(0,0,0,0.88)';
-      ctx.beginPath();ctx.roundRect(x-nw/2,y+R+4,nw,26,5);ctx.fill();
-      ctx.fillStyle='white';
-      ctx.fillText(dn,x,y+R+5);
+      ctx.fillStyle='rgba(0,0,0,0.88)';ctx.beginPath();ctx.roundRect(x-nw/2,y+R+4,nw,26,5);ctx.fill();
+      ctx.fillStyle='white';ctx.fillText(dn,x,y+R+5);
       ctx.textBaseline='alphabetic';
     });
   });
 }
 
+// ---- POST ----
+function renderPost(){
+  var has=currentTeams!==null;
+  document.getElementById('no-teams-msg').style.display=has?'none':'block';
+  document.getElementById('post-content').style.display=has?'block':'none';
+  if(!has)return;
+  renderGolesResumen();refreshMvp();
+}
+function renderGolesResumen(){
+  var el=document.getElementById('goles-resumen');
+  var has=Object.keys(golesInd).some(function(k){return golesInd[k]>0;});
+  if(!has){el.innerHTML='<div style="color:var(--tx2);font-size:12px;margin-top:4px">Sin goles anotados todavia</div>';return;}
+  var all=currentTeams.a.concat(currentTeams.b);
+  el.innerHTML=all.filter(function(p){return golesInd[p.id]>0;}).map(function(p){
+    return '<div style="display:flex;justify-content:space-between;padding:4px 0;font-size:13px;border-bottom:1px solid var(--d4)"><span>'+p.name+'</span><span style="color:var(--gold);font-weight:700">'+golesInd[p.id]+' ⚽</span></div>';
+  }).join('');
+}
+function openGoles(){
+  if(!currentTeams)return;
+  var all=currentTeams.a.concat(currentTeams.b);
+  document.getElementById('m-goles-list').innerHTML=all.map(function(p){
+    var g=golesInd[p.id]||0,tc=currentTeams.a.find(function(x){return x.id===p.id;})?'#4a90d9':'#e05252';
+    return '<div style="display:flex;align-items:center;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--d4)">'
+      +'<div><strong>'+p.name+'</strong><span style="display:inline-block;width:8px;height:8px;background:'+tc+';border-radius:50%;margin-left:6px"></span></div>'
+      +'<div style="display:flex;align-items:center;gap:10px">'
+      +'<button class="btn b-dark b-sm" onclick="chgG(\''+p.id+'\'-1)" style="width:32px;height:32px;padding:0;font-size:18px">−</button>'
+      +'<span id="gi-'+p.id+'" style="font-family:Bebas Neue,Arial;font-size:22px;color:var(--gold);min-width:24px;text-align:center">'+g+'</span>'
+      +'<button class="btn b-green b-sm" onclick="chgG(\''+p.id+'\',1)" style="width:32px;height:32px;padding:0;font-size:18px">+</button>'
+      +'</div></div>';
+  }).join('');
+  document.getElementById('m-goles').classList.add('open');
+}
+function chgG(id,d){golesInd[id]=Math.max(0,(golesInd[id]||0)+d);var e=document.getElementById('gi-'+id);if(e)e.textContent=golesInd[id];}
+function closeM(id){document.getElementById(id).classList.remove('open');renderGolesResumen();}
+
+function refreshMvp(){
+  if(!currentTeams)return;
+  var gA=parseInt(document.getElementById('g-a').value)||0;
+  var gB=parseInt(document.getElementById('g-b').value)||0;
+  var info=document.getElementById('mvp-info'),list=document.getElementById('mvp-list'),cands;
+  if(gA===gB){info.textContent='Empate — el MVP puede ser de cualquier equipo.';cands=currentTeams.a.concat(currentTeams.b);}
+  else{var wt=gA>gB?currentTeams.a:currentTeams.b,wn=gA>gB?'Azul':'Rojo';info.textContent='Gano Equipo '+wn+' '+Math.max(gA,gB)+'-'+Math.min(gA,gB)+' — vota el MVP:';cands=wt;}
+  list.innerHTML=cands.map(function(p){
+    var picked=currentMvp&&currentMvp.id===p.id;
+    return '<button class="vote-btn '+(picked?'picked':'')+'" onclick="pickMvp(\''+p.id+'\')"><span style="font-weight:600">'+p.name+'</span><span>'+(picked?'⭐ MVP':'⭐')+'</span></button>';
+  }).join('');
+  var ch=document.getElementById('mvp-chosen');
+  if(currentMvp){ch.style.display='block';document.getElementById('mvp-name').textContent=currentMvp.name;}
+  else ch.style.display='none';
+}
+function pickMvp(id){
+  var all=currentTeams.a.concat(currentTeams.b);
+  currentMvp=all.find(function(p){return String(p.id)===String(id);});
+  refreshMvp();toast('⭐ '+currentMvp.name+' — MVP!');
+}
+
+async function savePartido(){
+  if(!currentTeams){toast('Primero sortea los equipos');return;}
+  var gA=parseInt(document.getElementById('g-a').value)||0;
+  var gB=parseInt(document.getElementById('g-b').value)||0;
+  var winner=gA>gB?'A':gB>gA?'B':'empate';
+  try{
+    var res=await sp('crudos_partidos',{
+      team_a:JSON.stringify(currentTeams.a.map(function(p){return {id:p.id,name:p.name,pos:p.pa};})),
+      team_b:JSON.stringify(currentTeams.b.map(function(p){return {id:p.id,name:p.name,pos:p.pa};})),
+      goles_a:gA,goles_b:gB,
+      goles_ind:JSON.stringify(golesInd),
+      mvp_id:currentMvp?currentMvp.id:null,
+      mvp_name:currentMvp?currentMvp.name:null,
+      winner:winner
+    });
+    var saved=Object.assign({},res[0],{
+      team_a:currentTeams.a.map(function(p){return {id:p.id,name:p.name,pos:p.pa};}),
+      team_b:currentTeams.b.map(function(p){return {id:p.id,name:p.name,pos:p.pa};}),
+      goles_ind:golesInd
+    });
+    historial.unshift(saved);
+    currentTeams=null;enrolled.clear();golesInd={};currentMvp=null;
+    localStorage.removeItem('c_enrolled');localStorage.removeItem('c_teams');
+    document.getElementById('sorteo-card').style.display='none';
+    toast('Partido guardado!');
+    document.querySelectorAll('.tab')[4].click();
+  }catch(e){toast('Error: '+e.message);}
+}
+
+// ---- HISTORIAL ----
+function renderHist(){
+  var el=document.getElementById('hist-list');
+  if(!historial.length){el.innerHTML='<div class="empty"><div class="ei">📋</div><p>Sin partidos guardados</p></div>';return;}
+  el.innerHTML=historial.map(function(p){
+    var d=new Date(p.created_at).toLocaleDateString('es-AR',{weekday:'short',day:'numeric',month:'short',year:'numeric'});
+    var tA=p.team_a||[],tB=p.team_b||[];
+    var wl=p.winner==='empate'?'Empate':p.winner==='A'?'Gano Naranja':'Gano Amarillo';
+    return '<div class="hitem">'
+      +'<div style="font-size:11px;color:var(--tx2)">📅 '+d+'</div>'
+      +'<div class="hscore">'+p.goles_a+' — '+p.goles_b+'</div>'
+      +'<div style="color:#ff8c00;font-size:12px;font-weight:600;margin-bottom:3px">Naranja: '+tA.map(function(x){return x.name;}).join(', ')+'</div>'
+      +'<div style="color:#ffd700;font-size:12px;font-weight:600;margin-bottom:5px">Amarillo: '+tB.map(function(x){return x.name;}).join(', ')+'</div>'
+      +'<div style="text-align:center;font-size:13px;color:var(--gold);margin-bottom:5px">'+wl+'</div>'
+      +(p.mvp_name?'<div class="mvp-tag">⭐ MVP: '+p.mvp_name+'</div>':'')
+      +'<div style="margin-top:8px;display:flex;gap:8px">'+'<button class="btn b-sm" onclick="openEdit(\''+p.id+'\')" style="background:#1a1a0a;border:1px solid #f0b429;color:#f0b429;border-radius:8px;font-weight:700;padding:7px 12px">Editar</button>'+'<button class="btn b-red b-sm" onclick="delPartido(\''+p.id+'\')" style="padding:7px 12px">Borrar</button>'+'</div>'
+      +'</div>';
+  }).join('');
+}
+async function delPartido(id){
+  try{await sd('crudos_partidos',id);historial=historial.filter(function(p){return p.id!==id;});renderHist();renderStats();renderLiga();toast('Eliminado');}
+  catch(e){toast('Error: '+e.message);}
+}
+function renderStats(){
+  var el=document.getElementById('stats-box');
+  if(!historial.length){el.innerHTML='<div style="color:var(--tx2);font-size:13px;text-align:center;padding:8px 0">Sin partidos aun</div>';return;}
+  var gmap={};
+  historial.forEach(function(p){
+    var gi=typeof p.goles_ind==='string'?JSON.parse(p.goles_ind):(p.goles_ind||{});
+    Object.keys(gi).forEach(function(pid){if(gi[pid]>0){if(!gmap[pid]){var pl=players.find(function(x){return String(x.id)===pid;});gmap[pid]={name:pl?pl.name:'?',g:0};}gmap[pid].g+=gi[pid];}});
+  });
+  var mvmap={};
+  historial.forEach(function(p){if(p.mvp_name){if(!mvmap[p.mvp_name])mvmap[p.mvp_name]=0;mvmap[p.mvp_name]++;}});
+  var tG=Object.values(gmap).sort(function(a,b){return b.g-a.g;})[0];
+  var tM=Object.entries(mvmap).sort(function(a,b){return b[1]-a[1];})[0];
+  el.innerHTML='<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:8px">'
+    +'<div style="text-align:center;padding:10px;background:var(--d3);border-radius:8px"><div style="font-family:Bebas Neue,Arial;font-size:30px;color:var(--gold)">'+historial.length+'</div><div style="font-size:11px;color:var(--tx2)">PARTIDOS</div></div>'
+    +'<div style="text-align:center;padding:10px;background:var(--d3);border-radius:8px"><div style="font-family:Bebas Neue,Arial;font-size:30px;color:#4ec97a">'+players.length+'</div><div style="font-size:11px;color:var(--tx2)">JUGADORES</div></div>'
+    +'</div>'
+    +(tG?'<div style="padding:9px;background:var(--d3);border-radius:8px;display:flex;justify-content:space-between;margin-bottom:6px"><span style="font-size:12px;color:var(--tx2)">Top Goleador</span><strong>'+tG.name+' — <span style="color:var(--gold)">'+tG.g+' goles</span></strong></div>':'')
+    +(tM?'<div style="padding:9px;background:var(--d3);border-radius:8px;display:flex;justify-content:space-between"><span style="font-size:12px;color:var(--tx2)">Mas MVPs</span><strong>'+tM[0]+' — <span style="color:var(--gold)">'+tM[1]+'x</span></strong></div>':'');
+}
+
+// ---- LIGA ----
+function buildStats(){
+  var S={};
+  historial.forEach(function(p){
+    var tA=p.team_a||[],tB=p.team_b||[];
+    var gi=typeof p.goles_ind==='string'?JSON.parse(p.goles_ind):(p.goles_ind||{});
+    tA.concat(tB).forEach(function(pl){var k=String(pl.id);if(!S[k])S[k]={id:k,name:pl.name,pj:0,pg:0,pe:0,pp:0,pts:0,mvp:0,g:0};});
+    tA.forEach(function(pl){var k=String(pl.id);if(!S[k])return;S[k].pj++;if(p.winner==='A'){S[k].pg++;S[k].pts+=3;}else if(p.winner==='empate'){S[k].pe++;S[k].pts++;}else S[k].pp++;});
+    tB.forEach(function(pl){var k=String(pl.id);if(!S[k])return;S[k].pj++;if(p.winner==='B'){S[k].pg++;S[k].pts+=3;}else if(p.winner==='empate'){S[k].pe++;S[k].pts++;}else S[k].pp++;});
+    if(p.mvp_id&&S[String(p.mvp_id)]){S[String(p.mvp_id)].mvp++;S[String(p.mvp_id)].pts+=1;}
+    Object.keys(gi).forEach(function(pid){if(S[String(pid)])S[String(pid)].g+=Number(gi[pid]);});
+  });
+  return Object.values(S).sort(function(a,b){return b.pts!==a.pts?b.pts-a.pts:b.pg!==a.pg?b.pg-a.pg:b.g-a.g;});
+}
+function renderLiga(){renderLigaTable();renderTopGol();renderTopMvp();}
+function renderLigaTable(){
+  var c=document.getElementById('liga-tbl'),S=buildStats();
+  if(!S.length){c.innerHTML='<div class="empty" style="padding:16px"><div class="ei">🏆</div><p>La liga se forma con los partidos guardados</p></div>';return;}
+  c.innerHTML='<table class="ltable"><thead><tr><th style="text-align:left"># Jugador</th><th>PJ</th><th>PG</th><th>PE</th><th>PP</th><th>⭐</th><th>PTS</th></tr></thead><tbody>'
+    +S.map(function(x,i){var m=i===0?'🥇':i===1?'🥈':i===2?'🥉':(i+1)+'.';
+      return '<tr><td><span style="margin-right:3px">'+m+'</span>'+x.name+'</td><td>'+x.pj+'</td><td style="color:#4ec97a;font-weight:600">'+x.pg+'</td><td style="color:var(--gold)">'+x.pe+'</td><td style="color:var(--red)">'+x.pp+'</td><td>'+(x.mvp>0?'⭐'.repeat(Math.min(x.mvp,3))+(x.mvp>3?'x'+x.mvp:''):'—')+'</td><td class="pts">'+x.pts+'</td></tr>';
+    }).join('')+'</tbody></table>';
+}
+function renderTopGol(){
+  var el=document.getElementById('top-gol'),S=buildStats().filter(function(x){return x.g>0;}).sort(function(a,b){return b.g-a.g;});
+  if(!S.length){el.innerHTML='<div class="empty" style="padding:12px"><p>No hay goles aun</p></div>';return;}
+  var mx=S[0].g;
+  el.innerHTML=S.slice(0,8).map(function(x,i){return '<div class="sbwrap"><div class="sblabel"><span>'+(i===0?'🥇':i===1?'🥈':i===2?'🥉':'  ')+' '+x.name+'</span><span style="color:var(--gold);font-weight:700">'+x.g+' ⚽</span></div><div class="sbtrack"><div class="sbfill" style="width:'+(x.g/mx*100)+'%"></div></div></div>';}).join('');
+}
+function renderTopMvp(){
+  var el=document.getElementById('top-mvp'),S=buildStats().filter(function(x){return x.mvp>0;}).sort(function(a,b){return b.mvp-a.mvp;});
+  if(!S.length){el.innerHTML='<div class="empty" style="padding:12px"><p>No hay MVPs aun</p></div>';return;}
+  var mx=S[0].mvp;
+  el.innerHTML=S.map(function(x,i){return '<div class="sbwrap"><div class="sblabel"><span>'+(i===0?'🥇':i===1?'🥈':i===2?'🥉':'  ')+' '+x.name+'</span><span style="color:var(--gold);font-weight:700">'+x.mvp+'x ⭐</span></div><div class="sbtrack"><div class="sbfill" style="width:'+(x.mvp/mx*100)+'%;background:linear-gradient(90deg,#c8901a,#f0b429)"></div></div></div>';}).join('');
+}
 
 // ---- EDIT PARTIDO ----
 function openEdit(id){
@@ -746,121 +832,67 @@ async function saveEdit(){
   var mvpName=document.getElementById('edit-mvp').value.trim()||null;
   var winner=gA>gB?'A':gB>gA?'B':'empate';
   try{
-    await su('crudos_partidos',id,{goles_a:gA,goles_b:gB,winner:winner,mvp_name:mvpName||null,mvp_id:null});
-    var idx=historial.findIndex(function(x){return x.id===id;});
-    if(idx>=0){
-      historial[idx].goles_a=gA;
-      historial[idx].goles_b=gB;
-      historial[idx].winner=winner;
-      historial[idx].mvp_name=mvpName;
-    }
-    closeM('m-edit');
-    renderHist();renderStats();renderLiga();
+    await su('crudos_partidos',id,{goles_a:gA,goles_b:gB,winner:winner,mvp_name:mvpName});
+    var i=historial.findIndex(function(x){return x.id===id;});
+    if(i>=0){historial[i].goles_a=gA;historial[i].goles_b=gB;historial[i].winner=winner;historial[i].mvp_name=mvpName;}
+    closeM('m-edit');renderHist();renderStats();renderLiga();
     toast('Partido actualizado!');
   }catch(e){toast('Error: '+e.message);}
 }
-
-// ---- SWAP PLAYERS IN CURRENT SORTEO ----
-var swapSelected=null;
+var swapSel=null;
 function openSwap(){
   if(!currentTeams){toast('Primero sortea los equipos');return;}
-  swapSelected=null;
-  renderSwap();
+  swapSel=null;renderSwapModal();
   document.getElementById('m-swap').classList.add('open');
 }
-function renderSwap(){
-  var posOrder={ARQ:0,DEF:1,MED:2,DEL:3};
-  function sortT(t){return t.slice().sort(function(a,b){return posOrder[a.pa]-posOrder[b.pa];});}
-  function playerBtn(p,team){
-    var isSel=swapSelected&&swapSelected.id===p.id;
-    var col=team==='a'?'#cc5500':'#a07800';
-    var bdr=isSel?'3px solid #f0b429':'2px solid transparent';
-    return '<div onclick="selectSwap(''+p.id+'',''+team+'')" style="padding:8px 10px;background:'+(isSel?'#f0b42922':'var(--d3)')+';border:'+bdr+';border-radius:8px;margin-bottom:5px;cursor:pointer;font-size:13px;font-weight:600;display:flex;justify-content:space-between">'
-      +'<span>'+p.name+'</span>'
-      +'<span class="pb p'+p.pa+'" style="font-size:10px">'+p.pa+'</span>'
-      +'</div>';
+function renderSwapModal(){
+  var po={ARQ:0,DEF:1,MED:2,DEL:3};
+  function st(t){return t.slice().sort(function(a,b){return po[a.pa]-po[b.pa];});}
+  function btn(p,team){
+    var s=swapSel&&swapSel.id===p.id;
+    return '<div onclick="selSwap(\''+p.id+'\',\''+team+'\')" style="padding:9px 11px;background:'+(s?'#f0b42922':'var(--d3)')+';border:'+(s?'2px solid #f0b429':'2px solid transparent')+';border-radius:8px;margin-bottom:5px;cursor:pointer;display:flex;justify-content:space-between;font-size:13px;font-weight:600"><span>'+p.name+'</span><span class="pb p'+p.pa+'" style="font-size:10px">'+p.pa+'</span></div>';
   }
-  document.getElementById('swap-a').innerHTML=sortT(currentTeams.a).map(function(p){return playerBtn(p,'a');}).join('');
-  document.getElementById('swap-b').innerHTML=sortT(currentTeams.b).map(function(p){return playerBtn(p,'b');}).join('');
+  document.getElementById('swap-a').innerHTML=st(currentTeams.a).map(function(p){return btn(p,'a');}).join('');
+  document.getElementById('swap-b').innerHTML=st(currentTeams.b).map(function(p){return btn(p,'b');}).join('');
 }
-function selectSwap(pid,team){
-  if(!swapSelected){
-    // First selection
-    swapSelected={id:pid,team:team};
-    renderSwap();
-  } else {
-    // Second selection — must be opposite team
-    if(swapSelected.team===team){
-      // Same team — change selection
-      swapSelected={id:pid,team:team};
-      renderSwap();
-      return;
-    }
-    // Do the swap
-    var teamA=currentTeams.a, teamB=currentTeams.b;
-    var fromTeam=swapSelected.team==='a'?teamA:teamB;
-    var toTeam=swapSelected.team==='a'?teamB:teamA;
-    var pFrom=fromTeam.find(function(p){return p.id===swapSelected.id;});
-    var pTo=(team==='a'?teamA:teamB).find(function(p){return p.id===pid;});
-    if(!pFrom||!pTo){swapSelected=null;renderSwap();return;}
-    // Swap positions in arrays
-    var iFrom=fromTeam.indexOf(pFrom);
-    var iTo=(team==='a'?teamA:teamB).indexOf(pTo);
-    // Also swap their assigned positions
-    var tmpPa=pFrom.pa; pFrom.pa=pTo.pa; pTo.pa=tmpPa;
-    fromTeam[iFrom]=pTo;
-    (team==='a'?teamA:teamB)[iTo]=pFrom;
-    currentTeams.a=teamA; currentTeams.b=teamB;
-    localStorage.setItem('c_teams',JSON.stringify(currentTeams));
-    swapSelected=null;
-    renderSwap();
-    renderTeams();
-    toast('Jugadores intercambiados!');
-  }
+function selSwap(pid,team){
+  if(!swapSel){swapSel={id:pid,team:team};renderSwapModal();return;}
+  if(swapSel.team===team){swapSel={id:pid,team:team};renderSwapModal();return;}
+  var tA=currentTeams.a,tB=currentTeams.b;
+  var src=swapSel.team==='a'?tA:tB,dst=team==='a'?tA:tB;
+  var iS=src.findIndex(function(p){return p.id===swapSel.id;});
+  var iD=dst.findIndex(function(p){return p.id===pid;});
+  if(iS<0||iD<0){swapSel=null;renderSwapModal();return;}
+  var tmp=src[iS],tmpPa=tmp.pa;
+  tmp.pa=dst[iD].pa;dst[iD].pa=tmpPa;
+  src[iS]=dst[iD];dst[iD]=tmp;
+  localStorage.setItem('c_teams',JSON.stringify(currentTeams));
+  swapSel=null;renderSwapModal();renderTeams();
+  toast('Intercambiados!');
 }
-
 // ---- TOAST ----
 function toast(msg){var t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(function(){t.classList.remove('show');},2600);}
 </script>
 
-<!-- MODAL EDIT PARTIDO -->
 <div class="moverlay" id="m-edit">
   <div class="modal">
     <button class="mclose" onclick="closeM('m-edit')">&#x2715;</button>
-    <div class="mtitle">&#x270F;&#xFE0F; EDITAR PARTIDO</div>
+    <div class="mtitle">Editar Partido</div>
     <input type="hidden" id="edit-id">
-
-    <div class="igroup">
-      <div class="ilabel">Resultado Naranja</div>
-      <input type="number" id="edit-ga" min="0" max="99" value="0">
-    </div>
-    <div class="igroup">
-      <div class="ilabel">Resultado Amarillo</div>
-      <input type="number" id="edit-gb" min="0" max="99" value="0">
-    </div>
-    <div class="igroup">
-      <div class="ilabel">MVP (nombre exacto)</div>
-      <input type="text" id="edit-mvp" placeholder="Nombre del MVP o dejar vacío">
-    </div>
+    <div class="igroup"><div class="ilabel">Goles Naranja</div><input type="number" id="edit-ga" min="0" max="99" value="0"></div>
+    <div class="igroup"><div class="ilabel">Goles Amarillo</div><input type="number" id="edit-gb" min="0" max="99" value="0"></div>
+    <div class="igroup"><div class="ilabel">MVP (nombre)</div><input type="text" id="edit-mvp" placeholder="Nombre del MVP"></div>
     <button class="btn b-gold" onclick="saveEdit()" style="margin-top:8px">GUARDAR CAMBIOS</button>
   </div>
 </div>
-
-<!-- MODAL EDIT EQUIPO (swap players between teams) -->
 <div class="moverlay" id="m-swap">
   <div class="modal">
     <button class="mclose" onclick="closeM('m-swap')">&#x2715;</button>
-    <div class="mtitle">&#x1F500; EDITAR SORTEO</div>
-    <div class="ibox" style="margin-bottom:10px;font-size:12px">Tocá un jugador de Naranja y uno de Amarillo para intercambiarlos.</div>
+    <div class="mtitle">Editar Sorteo</div>
+    <div class="ibox" style="margin-bottom:10px;font-size:12px">Toca un jugador de cada equipo para intercambiarlos.</div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-      <div>
-        <div style="color:#ff8c00;font-weight:700;font-size:12px;margin-bottom:6px">&#x1F7E0; NARANJA</div>
-        <div id="swap-a"></div>
-      </div>
-      <div>
-        <div style="color:#ffd700;font-weight:700;font-size:12px;margin-bottom:6px">&#x1F7E1; AMARILLO</div>
-        <div id="swap-b"></div>
-      </div>
+      <div><div style="color:#ff8c00;font-weight:700;font-size:12px;margin-bottom:6px">NARANJA</div><div id="swap-a"></div></div>
+      <div><div style="color:#ffd700;font-weight:700;font-size:12px;margin-bottom:6px">AMARILLO</div><div id="swap-b"></div></div>
     </div>
     <button class="btn b-green" onclick="closeM('m-swap')" style="margin-top:14px">LISTO</button>
   </div>
