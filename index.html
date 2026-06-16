@@ -338,6 +338,8 @@ async function su(t,id,b){var h=Object.assign({},SB_H,{'Prefer':'return=represen
 
 // ---- STATE ----
 var players=[],enrolled=new Set(),currentTeams=null,golesInd={},currentMvp=null,historial=[],musicOn=false;
+var editAccess=false;
+var EDIT_PASS='crudos2025';
 
 // ---- SPLASH ----
 function enterApp(){
@@ -560,34 +562,71 @@ function renderTeams(){
 // ---- CANVAS ----
 function genImg(){
   if(!currentTeams)return;
-  var W=700,H=1200;
+  var W=700,H=1320;
   var cvs=document.getElementById('cvs'),ctx=cvs.getContext('2d');
   cvs.width=W;cvs.height=H;
+
   function doRender(bg){
-    if(bg){ctx.drawImage(bg,0,0,W,H);ctx.fillStyle='rgba(0,0,0,0.80)';ctx.fillRect(0,0,W,H);}
-    else{ctx.fillStyle='#0d1117';ctx.fillRect(0,0,W,H);}
+    // Full dark background
+    ctx.fillStyle='#0d1117';ctx.fillRect(0,0,W,H);
+
+    var BANNER_H=300;
+
+    // === BANNER: mafioso on top ===
+    if(bg){
+      // Draw image to fill banner area, cropped
+      var iw=bg.width, ih=bg.height;
+      var scale=Math.max(W/iw, BANNER_H/ih);
+      var dw=iw*scale, dh=ih*scale;
+      var dx=(W-dw)/2, dy=(BANNER_H-dh)/2;
+      ctx.save();
+      ctx.beginPath();ctx.rect(0,0,W,BANNER_H);ctx.clip();
+      ctx.drawImage(bg,dx,dy,dw,dh);
+      // Gradient fade at bottom of banner
+      var g=ctx.createLinearGradient(0,0,0,BANNER_H);
+      g.addColorStop(0,'rgba(0,0,0,0.25)');
+      g.addColorStop(0.7,'rgba(0,0,0,0.35)');
+      g.addColorStop(1,'rgba(13,17,23,0.95)');
+      ctx.fillStyle=g;ctx.fillRect(0,0,W,BANNER_H);
+      ctx.restore();
+    } else {
+      ctx.fillStyle='#1a1a1a';ctx.fillRect(0,0,W,BANNER_H);
+    }
+
+    // === HEADER text over banner ===
     ctx.textAlign='center';
-    ctx.shadowColor='rgba(0,0,0,0.9)';ctx.shadowBlur=10;
-    ctx.fillStyle='#f0b429';ctx.font='bold 58px Arial';ctx.fillText('LOS CRUDOS FC',W/2,64);
-    ctx.fillStyle='rgba(255,255,255,0.8)';ctx.font='15px Arial';
-    ctx.fillText(new Date().toLocaleDateString('es-AR',{weekday:'long',day:'numeric',month:'long'}).toUpperCase(),W/2,88);
-    ctx.fillStyle='rgba(240,180,41,0.85)';ctx.font='bold italic 16px Arial';
-    ctx.fillText('Director Tecnico del Partido',W/2,112);
+    ctx.shadowColor='rgba(0,0,0,0.95)';ctx.shadowBlur=12;
+    ctx.fillStyle='#f0b429';ctx.font='bold 60px Arial';
+    ctx.fillText('LOS CRUDOS FC',W/2,68);
+    ctx.fillStyle='rgba(255,255,255,0.85)';ctx.font='16px Arial';
+    ctx.fillText(new Date().toLocaleDateString('es-AR',{weekday:'long',day:'numeric',month:'long'}).toUpperCase(),W/2,94);
     ctx.shadowBlur=0;
-    var FX=20,FY=124,FW=W-40,FH=H-160;
+
+    // DT label at bottom of banner
+    ctx.fillStyle='#f0b429';ctx.font='bold italic 18px Arial';
+    ctx.shadowColor='rgba(0,0,0,0.9)';ctx.shadowBlur=8;
+    ctx.fillText('🎩 Director Tecnico del Partido',W/2,BANNER_H-16);
+    ctx.shadowBlur=0;
+
+    // === FIELD below banner ===
+    var FX=20, FY=BANNER_H+14, FW=W-40, FH=H-BANNER_H-60;
     canvasField(ctx,FX,FY,FW,FH);
     canvasTeam(ctx,currentTeams.a,FX,FY,        FW,FH/2,'TOP','#c85000');
     canvasTeam(ctx,currentTeams.b,FX,FY+FH/2,   FW,FH/2,'BOT','#a07800');
+
+    // === Team labels at bottom ===
     ctx.shadowColor='rgba(0,0,0,0.9)';ctx.shadowBlur=8;
     ctx.font='bold 26px Arial';
-    ctx.textAlign='left';ctx.fillStyle='#ff8c00';ctx.fillText('NARANJA',24,H-18);
-    ctx.textAlign='right';ctx.fillStyle='#ffd700';ctx.fillText('AMARILLO',W-24,H-18);
+    ctx.textAlign='left';ctx.fillStyle='#ff8c00';ctx.fillText('NARANJA',24,H-16);
+    ctx.textAlign='right';ctx.fillStyle='#ffd700';ctx.fillText('AMARILLO',W-24,H-16);
     ctx.shadowBlur=0;
+
     var url=cvs.toDataURL('image/png');
     var a=document.createElement('a');a.href=url;
     a.download='crudos_'+new Date().toLocaleDateString('es-AR').replace(/[/]/g,'-')+'.png';
     a.click();toast('Imagen descargada!');
   }
+
   try{
     var b64=IMG_PADRINO.replace(/^data:image\/[a-z]+;base64,/,'');
     var bin=atob(b64);var arr=new Uint8Array(bin.length);
@@ -600,6 +639,7 @@ function genImg(){
     img.src=burl;
   }catch(e){doRender(null);}
 }
+
 function canvasField(ctx,FX,FY,FW,FH){
   ctx.fillStyle='#1e7d3a';ctx.beginPath();ctx.roundRect(FX,FY,FW,FH,8);ctx.fill();
   var sH=FH/10;
@@ -815,8 +855,26 @@ function renderTopMvp(){
   el.innerHTML=S.map(function(x,i){return '<div class="sbwrap"><div class="sblabel"><span>'+(i===0?'🥇':i===1?'🥈':i===2?'🥉':'  ')+' '+x.name+'</span><span style="color:var(--gold);font-weight:700">'+x.mvp+'x ⭐</span></div><div class="sbtrack"><div class="sbfill" style="width:'+(x.mvp/mx*100)+'%;background:linear-gradient(90deg,#c8901a,#f0b429)"></div></div></div>';}).join('');
 }
 
+
+// ---- ACCESO ESPECIAL EDICION ----
+function requireAccess(cb){
+  if(editAccess){cb();return;}
+  var pass=prompt('🔒 Acceso especial — ingresá la clave para editar:');
+  if(pass===null)return;
+  if(pass===EDIT_PASS){
+    editAccess=true;
+    toast('🔓 Acceso de edicion habilitado');
+    cb();
+  } else {
+    toast('❌ Clave incorrecta');
+  }
+}
+
 // ---- EDIT PARTIDO ----
 function openEdit(id){
+  requireAccess(function(){doOpenEdit(id);});
+}
+function doOpenEdit(id){
   var p=historial.find(function(x){return x.id===id;});
   if(!p)return;
   document.getElementById('edit-id').value=id;
@@ -841,6 +899,9 @@ async function saveEdit(){
 }
 var swapSel=null;
 function openSwap(){
+  requireAccess(function(){doOpenSwap();});
+}
+function doOpenSwap(){
   if(!currentTeams){toast('Primero sortea los equipos');return;}
   swapSel=null;renderSwapModal();
   document.getElementById('m-swap').classList.add('open');
