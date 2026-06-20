@@ -880,19 +880,98 @@ function doOpenEdit(id){
   document.getElementById('edit-id').value=id;
   document.getElementById('edit-ga').value=p.goles_a||0;
   document.getElementById('edit-gb').value=p.goles_b||0;
-  document.getElementById('edit-mvp').value=p.mvp_name||'';
+  // Rebuild MVP select with all players from this match
+  var tA=p.team_a||[],tB=p.team_b||[];
+  var allP=tA.concat(tB);
+  var mvpSel=document.getElementById('edit-mvp');
+  mvpSel.innerHTML='<option value="">— Sin MVP —</option>';
+  allP.forEach(function(pl){
+    var opt=document.createElement('option');
+    opt.value=pl.name;opt.textContent=pl.name;
+    if(pl.name===p.mvp_name)opt.selected=true;
+    mvpSel.appendChild(opt);
+  });
+  // Build player checkboxes for team A
+  var elA=document.getElementById('edit-team-a');
+  elA.innerHTML='';
+  players.forEach(function(pl){
+    var inA=tA.some(function(x){return x.id===pl.id;});
+    var chip=document.createElement('div');
+    chip.style.cssText='display:flex;align-items:center;gap:5px;padding:6px 10px;border-radius:20px;cursor:pointer;font-size:13px;font-weight:600;border:2px solid '+(inA?'#ff8c00':'var(--d4)')+';background:'+(inA?'#3d2000':'var(--d3)')+';color:'+(inA?'#ff8c00':'var(--tx2)');
+    chip.innerHTML='<span>'+(inA?'✓ ':'')+pl.name+'</span>';
+    chip.dataset.id=pl.id;chip.dataset.name=pl.name;chip.dataset.pos=(pl.positions&&pl.positions[0])||'DEL';
+    chip.dataset.team='a';chip.dataset.sel=inA?'1':'0';
+    chip.onclick=function(){
+      var s=this.dataset.sel==='1';
+      this.dataset.sel=s?'0':'1';
+      this.style.borderColor=s?'var(--d4)':'#ff8c00';
+      this.style.background=s?'var(--d3)':'#3d2000';
+      this.style.color=s?'var(--tx2)':'#ff8c00';
+      this.querySelector('span').textContent=(s?'':' ✓ ')+this.dataset.name;
+      refreshEditMvp();
+    };
+    elA.appendChild(chip);
+  });
+  // Build player checkboxes for team B
+  var elB=document.getElementById('edit-team-b');
+  elB.innerHTML='';
+  players.forEach(function(pl){
+    var inB=tB.some(function(x){return x.id===pl.id;});
+    var chip=document.createElement('div');
+    chip.style.cssText='display:flex;align-items:center;gap:5px;padding:6px 10px;border-radius:20px;cursor:pointer;font-size:13px;font-weight:600;border:2px solid '+(inB?'#ffd700':'var(--d4)')+';background:'+(inB?'#3d3000':'var(--d3)')+';color:'+(inB?'#ffd700':'var(--tx2)');
+    chip.innerHTML='<span>'+(inB?'✓ ':'')+pl.name+'</span>';
+    chip.dataset.id=pl.id;chip.dataset.name=pl.name;chip.dataset.pos=(pl.positions&&pl.positions[0])||'DEL';
+    chip.dataset.team='b';chip.dataset.sel=inB?'1':'0';
+    chip.onclick=function(){
+      var s=this.dataset.sel==='1';
+      this.dataset.sel=s?'0':'1';
+      this.style.borderColor=s?'var(--d4)':'#ffd700';
+      this.style.background=s?'var(--d3)':'#3d3000';
+      this.style.color=s?'var(--tx2)':'#ffd700';
+      this.querySelector('span').textContent=(s?'':' ✓ ')+this.dataset.name;
+      refreshEditMvp();
+    };
+    elB.appendChild(chip);
+  });
   document.getElementById('m-edit').classList.add('open');
+}
+function refreshEditMvp(){
+  var chips=document.querySelectorAll('#edit-team-a [data-sel],#edit-team-b [data-sel]');
+  var sel=document.getElementById('edit-mvp');
+  var prev=sel.value;
+  sel.innerHTML='<option value="">— Sin MVP —</option>';
+  chips.forEach(function(c){
+    if(c.dataset.sel==='1'){
+      var opt=document.createElement('option');
+      opt.value=c.dataset.name;opt.textContent=c.dataset.name;
+      if(c.dataset.name===prev)opt.selected=true;
+      sel.appendChild(opt);
+    }
+  });
 }
 async function saveEdit(){
   var id=document.getElementById('edit-id').value;
   var gA=parseInt(document.getElementById('edit-ga').value)||0;
   var gB=parseInt(document.getElementById('edit-gb').value)||0;
-  var mvpName=document.getElementById('edit-mvp').value.trim()||null;
+  var mvpName=document.getElementById('edit-mvp').value||null;
   var winner=gA>gB?'A':gB>gA?'B':'empate';
+  // Collect teams from checkboxes
+  var chipsA=document.querySelectorAll('#edit-team-a [data-id]');
+  var chipsB=document.querySelectorAll('#edit-team-b [data-id]');
+  var newTA=[],newTB=[];
+  chipsA.forEach(function(c){if(c.dataset.sel==='1')newTA.push({id:parseInt(c.dataset.id),name:c.dataset.name,pa:c.dataset.pos});});
+  chipsB.forEach(function(c){if(c.dataset.sel==='1')newTB.push({id:parseInt(c.dataset.id),name:c.dataset.name,pa:c.dataset.pos});});
+  // Find mvp_id
+  var mvpId=null;
+  if(mvpName){
+    var mvpPl=players.find(function(p){return p.name===mvpName;});
+    if(mvpPl)mvpId=mvpPl.id;
+  }
+  var payload={goles_a:gA,goles_b:gB,winner:winner,mvp_name:mvpName,mvp_id:mvpId,team_a:newTA,team_b:newTB};
   try{
-    await su('crudos_partidos',id,{goles_a:gA,goles_b:gB,winner:winner,mvp_name:mvpName});
+    await su('crudos_partidos',id,payload);
     var i=historial.findIndex(function(x){return x.id===id;});
-    if(i>=0){historial[i].goles_a=gA;historial[i].goles_b=gB;historial[i].winner=winner;historial[i].mvp_name=mvpName;}
+    if(i>=0)Object.assign(historial[i],payload);
     closeM('m-edit');renderHist();renderStats();renderLiga();
     toast('Partido actualizado!');
   }catch(e){toast('Error: '+e.message);}
@@ -942,7 +1021,15 @@ function toast(msg){var t=document.getElementById('toast');t.textContent=msg;t.c
     <input type="hidden" id="edit-id">
     <div class="igroup"><div class="ilabel">Goles Naranja</div><input type="number" id="edit-ga" min="0" max="99" value="0"></div>
     <div class="igroup"><div class="ilabel">Goles Amarillo</div><input type="number" id="edit-gb" min="0" max="99" value="0"></div>
-    <div class="igroup"><div class="ilabel">MVP (nombre)</div><input type="text" id="edit-mvp" placeholder="Nombre del MVP"></div>
+    <div class="igroup"><div class="ilabel">MVP</div><select id="edit-mvp" style="width:100%;background:var(--d3);border:1px solid var(--d4);border-radius:8px;padding:11px 12px;color:var(--tx);font-size:15px;font-family:'Inter',sans-serif;outline:none"><option value="">— Sin MVP —</option></select></div>
+    <div class="igroup">
+      <div class="ilabel" style="color:#ff8c00">Jugadores Naranja</div>
+      <div id="edit-team-a" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px"></div>
+    </div>
+    <div class="igroup">
+      <div class="ilabel" style="color:#ffd700">Jugadores Amarillo</div>
+      <div id="edit-team-b" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px"></div>
+    </div>
     <button class="btn b-gold" onclick="saveEdit()" style="margin-top:8px">GUARDAR CAMBIOS</button>
   </div>
 </div>
