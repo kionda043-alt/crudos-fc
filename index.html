@@ -376,7 +376,8 @@ renderLiga();
 setStatus('SIN CONEXION','var(--red)');
 toast('Revisa las tablas en Supabase');
 }
-renderPlayersList();renderPicker();renderTeams();
+renderPlayersList();renderPicker();
+if(currentTeams){renderTeams();var _sc=document.getElementById('sorteo-card');if(_sc)_sc.style.display='block';}
 }
 function setStatus(t,c){var el=document.getElementById('db-st');el.textContent=t;el.style.color=c;}
 
