@@ -363,24 +363,20 @@ function toggleMusic(){
 
 // ---- INIT ----
 async function init(){
-  document.getElementById('temporada').textContent='TEMPORADA '+new Date().getFullYear();
-  try{
-    players=await sg('crudos_players','order=name.asc');
-    var raw=await sg('crudos_partidos','order=created_at.desc');
-    historial=raw.map(function(p){return Object.assign({},p,{
-      team_a:typeof p.team_a==='string'?JSON.parse(p.team_a):(p.team_a||[]),
-      team_b:typeof p.team_b==='string'?JSON.parse(p.team_b):(p.team_b||[]),
-      goles_ind:typeof p.goles_ind==='string'?JSON.parse(p.goles_ind):(p.goles_ind||{})
-    });});
-    var se=localStorage.getItem('c_enrolled'); if(se)enrolled=new Set(JSON.parse(se));
-    var st=localStorage.getItem('c_teams'); if(st)currentTeams=JSON.parse(st);
-    setStatus('EN LINEA ✓','#4ec97a');
-    renderLiga(); renderPlayersList(); renderPicker();
-  }catch(e){
-    setStatus('SIN CONEXION','var(--red)');
-    toast('Revisa las tablas en Supabase');
-    renderPlayersList(); renderPicker();
-  }
+document.getElementById('temporada').textContent='TEMPORADA '+new Date().getFullYear();
+var se=localStorage.getItem('c_enrolled');if(se)enrolled=new Set(JSON.parse(se));
+var st=localStorage.getItem('c_teams');if(st)currentTeams=JSON.parse(st);
+try{
+players=await sg('crudos_players','order=name.asc');
+var raw=await sg('crudos_partidos','order=created_at.desc');
+historial=raw.map(function(p){return Object.assign({},p,{team_a:typeof p.team_a==='string'?JSON.parse(p.team_a):(p.team_a||[]),team_b:typeof p.team_b==='string'?JSON.parse(p.team_b):(p.team_b||[]),goles_ind:typeof p.goles_ind==='string'?JSON.parse(p.goles_ind):(p.goles_ind||{})});});
+setStatus('EN LINEA ✓','#4ec97a');
+renderLiga();
+}catch(e){
+setStatus('SIN CONEXION','var(--red)');
+toast('Revisa las tablas en Supabase');
+}
+renderPlayersList();renderPicker();renderTeams();
 }
 function setStatus(t,c){var el=document.getElementById('db-st');el.textContent=t;el.style.color=c;}
 
